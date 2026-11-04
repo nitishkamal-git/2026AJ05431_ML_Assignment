@@ -1,3 +1,6 @@
+import logging
+from pathlib import Path
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -19,6 +22,21 @@ from sklearn.metrics import (
     classification_report
 )
 
+BASE_DIR = Path(__file__).resolve().parent
+LOG_DIR = BASE_DIR / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(LOG_DIR / "streamlit_app.log", mode="a"),
+    ],
+)
+logger = logging.getLogger(__name__)
+logger.info("Streamlit app started from %s", BASE_DIR)
+
 st.set_page_config(
     page_title="Diabetes Readmission Prediction",
     page_icon="🏥",
@@ -32,11 +50,11 @@ st.write(
 )
 
 MODEL_PATHS = {
-    "Logistic Regression": "models/logistic_regression.joblib",
-    "Decision Tree": "models/decision_tree.joblib",
-    "KNN": "models/knn.joblib",
-    "Multinomial Naive Bayes": "models/multinomial_naive_bayes.joblib",
-    "Linear SVM": "models/linear_svm.joblib"
+    "Logistic Regression": BASE_DIR / "models" / "logistic_regression.joblib",
+    "Decision Tree": BASE_DIR / "models" / "decision_tree.joblib",
+    "KNN": BASE_DIR / "models" / "knn.joblib",
+    "Multinomial Naive Bayes": BASE_DIR / "models" / "multinomial_naive_bayes.joblib",
+    "Linear SVM": BASE_DIR / "models" / "linear_svm.joblib",
 }
 
 CLASS_LABELS = ["<30", ">30", "NO"]
@@ -56,6 +74,7 @@ uploaded_file = st.file_uploader(
 if uploaded_file is not None:
 
     try:
+        logger.info("Reading uploaded file: %s", uploaded_file.name)
         data = pd.read_csv(uploaded_file)
 
         st.subheader("Uploaded Dataset")
@@ -63,24 +82,35 @@ if uploaded_file is not None:
         st.dataframe(data.head())
 
         if "readmitted" not in data.columns:
-            st.error(
-                "The uploaded CSV must contain "
-                "the 'readmitted' target column."
-            )
+            logger.error("Upload rejected: missing readmitted column")
+            st.error("The uploaded CSV must contain the 'readmitted' target column.")
             st.stop()
 
         X_uploaded = data.drop(columns=["readmitted"])
         y_actual = data["readmitted"]
 
         if y_actual.isnull().any():
+            logger.error("Upload rejected: target column contains missing values")
             st.error("Target column contains missing values.")
             st.stop()
 
-        if not set(y_actual.unique()).issubset(set(CLASS_LABELS)):
+        unexpected_classes = sorted(set(y_actual.unique()) - set(CLASS_LABELS))
+        if unexpected_classes:
+            logger.error("Upload rejected: unexpected classes %s", unexpected_classes)
             st.error("Unexpected target class found in the CSV.")
             st.stop()
 
+        missing_classes = sorted(set(CLASS_LABELS) - set(y_actual.unique()))
+        if missing_classes:
+            logger.error("Upload rejected: missing classes %s", missing_classes)
+            st.error(
+                "The uploaded dataset must contain all three target classes: "
+                "<30, >30, and NO. Missing: " + ", ".join(missing_classes)
+            )
+            st.stop()
+
         # Load selected trained model
+        logger.info("Loading model %s from %s", selected_model, MODEL_PATHS[selected_model])
         model = joblib.load(MODEL_PATHS[selected_model])
 
         # Validate feature columns
@@ -88,12 +118,18 @@ if uploaded_file is not None:
             model.named_steps["preprocessor"].feature_names_in_
         )
 
-        if set(X_uploaded.columns) != set(expected_columns):
-            st.error(
-                "Uploaded dataset features do not match "
-                "the model's expected input columns."
+        missing_columns = sorted(set(expected_columns) - set(X_uploaded.columns))
+        extra_columns = sorted(set(X_uploaded.columns) - set(expected_columns))
+        if missing_columns or extra_columns:
+            logger.error(
+                "Feature mismatch for %s; missing=%s extra=%s",
+                selected_model,
+                missing_columns,
+                extra_columns,
             )
-            st.write("Expected columns:", expected_columns)
+            st.error("Uploaded dataset features do not match the model's expected input columns.")
+            st.write("Missing columns:", missing_columns)
+            st.write("Unexpected columns:", extra_columns)
             st.stop()
 
         # Maintain the same feature order used during training
@@ -101,6 +137,7 @@ if uploaded_file is not None:
 
         # Predict
         y_pred = model.predict(X_uploaded)
+        logger.info("Prediction completed for model=%s rows=%d", selected_model, len(y_pred))
 
         classifier = model.named_steps["classifier"]
 
@@ -206,9 +243,21 @@ if uploaded_file is not None:
             "Note: Linear SVM uses softmax-normalized decision "
             "scores for AUC. These are not calibrated probabilities."
         )
+        logger.info(
+            "Evaluation completed: model=%s accuracy=%.4f auc=%.4f precision=%.4f recall=%.4f f1=%.4f mcc=%.4f",
+            selected_model,
+            accuracy,
+            auc,
+            precision,
+            recall,
+            f1,
+            mcc,
+        )
 
     except Exception as error:
+        logger.exception("Unhandled application error: %s", error)
         st.error(f"An error occurred: {error}")
 
 else:
+    logger.info("Waiting for a test dataset upload")
     st.info("Upload your test_data.csv file to begin.")

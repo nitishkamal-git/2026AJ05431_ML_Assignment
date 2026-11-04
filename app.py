@@ -43,6 +43,7 @@ st.set_page_config(
     layout="wide"
 )
 
+
 st.title("Diabetes Readmission Prediction")
 st.write(
     "Compare five machine learning classifiers "
@@ -75,7 +76,7 @@ if uploaded_file is not None:
 
     try:
         logger.info("Reading uploaded file: %s", uploaded_file.name)
-        data = pd.read_csv(uploaded_file)
+        data = pd.read_csv(uploaded_file, na_values=["?"], low_memory=False)
 
         st.subheader("Uploaded Dataset")
         st.write("Dataset shape:", data.shape)
@@ -113,6 +114,20 @@ if uploaded_file is not None:
         logger.info("Loading model %s from %s", selected_model, MODEL_PATHS[selected_model])
         model = joblib.load(MODEL_PATHS[selected_model])
 
+        # The original UCI dataset contains identifier and removed columns that are not model inputs.
+        # Remove those automatically so diabetic_data.csv can be tested directly.
+        training_only_columns = {
+            "encounter_id",
+            "patient_nbr",
+            "weight",
+            "examide",
+            "citoglipton",
+        }
+        dropped_columns = sorted(set(X_uploaded.columns) & training_only_columns)
+        if dropped_columns:
+            logger.info("Dropping training-only columns: %s", dropped_columns)
+            X_uploaded = X_uploaded.drop(columns=dropped_columns)
+
         # Validate feature columns
         expected_columns = list(
             model.named_steps["preprocessor"].feature_names_in_
@@ -131,6 +146,9 @@ if uploaded_file is not None:
             st.write("Missing columns:", missing_columns)
             st.write("Unexpected columns:", extra_columns)
             st.stop()
+
+        # Normalize UCI unknown markers so the fitted imputers handle them consistently.
+        X_uploaded = X_uploaded.replace("?", pd.NA)
 
         # Maintain the same feature order used during training
         X_uploaded = X_uploaded[expected_columns]

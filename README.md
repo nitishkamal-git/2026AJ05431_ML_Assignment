@@ -1,4 +1,5 @@
 # ML_Assignment
+# Bits ID: 2026AJ05431
 # Diabetes Readmission Prediction Using Machine Learning
 
 ## 1. Project Overview
@@ -48,7 +49,7 @@ The following data-cleaning and preprocessing activities were performed:
 - Used constant-value imputation for missing categorical values.
 - Applied One-Hot Encoding to categorical features.
 - Applied StandardScaler to numerical features for most classifiers.
-- Applied MinMaxScaler for Multinomial Naive Bayes.
+- Applied MinMaxScaler for the Naive Bayes Classifier - Multinomial variant.
 
 Missing-value imputation and feature transformations were implemented within Scikit-learn pipelines to avoid data leakage.
 
@@ -72,9 +73,9 @@ Five classification algorithms were implemented:
 
 1. Logistic Regression
 2. Decision Tree Classifier
-3. K-Nearest Neighbors (KNN)
-4. Multinomial Naive Bayes
-5. Linear Support Vector Machine (SVM)
+3. K-Nearest Neighbor Classifier
+4. Naive Bayes Classifier - Gaussian or Multinomial
+5. Support Vector Machine
 
 Each classifier was trained using its corresponding preprocessing pipeline.
 
@@ -93,7 +94,7 @@ Precision, Recall and F1-score use macro averaging to give equal importance to a
 
 AUC uses the multiclass One-vs-Rest approach with macro averaging.
 
-For Linear SVM, softmax-normalized decision scores were used for AUC calculation because LinearSVC does not directly provide probability estimates. These scores are not calibrated probabilities.
+For Support Vector Machine, softmax-normalized decision scores were used for AUC calculation because LinearSVC does not directly provide probability estimates. These scores are not calibrated probabilities.
 
 ## 7. Model Performance
 
@@ -102,14 +103,14 @@ The following results were obtained on the held-out test dataset.
 | Model | Accuracy | AUC | Precision | Recall | F1-score | MCC |
 |---|---:|---:|---:|---:|---:|---:|
 | Logistic Regression | 0.5474 | 0.6450 | 0.4900 | 0.3554 | 0.2809 | 0.0988 |
-| Multinomial Naive Bayes | 0.5424 | 0.6172 | 0.4334 | 0.3918 | 0.3784 | 0.1397 |
-| KNN | 0.5024 | 0.5725 | 0.3962 | 0.3910 | 0.3915 | 0.1138 |
-| Linear SVM | 0.5447 | 0.6422 | 0.5077 | 0.3455 | 0.2622 | 0.0736 |
-| Decision Tree | 0.4627 | 0.5357 | 0.3740 | 0.3745 | 0.3737 | 0.0817 |
+| Naive Bayes Classifier - Multinomial | 0.5424 | 0.6172 | 0.4334 | 0.3918 | 0.3784 | 0.1397 |
+| K-Nearest Neighbor Classifier | 0.5024 | 0.5725 | 0.3962 | 0.3910 | 0.3915 | 0.1138 |
+| Support Vector Machine | 0.5447 | 0.6422 | 0.5077 | 0.3455 | 0.2622 | 0.0736 |
+| Decision Tree Classifier | 0.4627 | 0.5357 | 0.3740 | 0.3745 | 0.3737 | 0.0817 |
 
 ### Key Findings
 
-- KNN achieved the highest macro F1-score: 0.3915.
-- Multinomial Naive Bayes achieved the second-highest macro F1-score: 0.3784.
+- K-Nearest Neighbor Classifier achieved the highest macro F1-score: 0.3915.
+- Naive Bayes Classifier - Multinomial achieved the second-highest macro F1-score: 0.3784.
 - Logistic Regression achieved the highest AUC: 0.6450.
-- Model recall is low for the `<30` and `>30` classes, particularly for Logistic Regression and Linear SVM.
+- Model recall is low for the `<30` and `>30` classes, particularly for Logistic Regression and Support Vector Machine.

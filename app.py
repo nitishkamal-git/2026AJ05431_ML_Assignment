@@ -50,13 +50,13 @@ logger.info("Streamlit app started from %s", BASE_DIR)
 
 # Configure the Streamlit page layout and metadata
 st.set_page_config(
-    page_title="ML Assignment: Diabetes Readmission Prediction",
+    page_title="ML Assignment: Diabetes Readmission Prediction Using Machine Learning",
     page_icon="🏥",
     layout="wide"
 )
 
 # App header and description
-st.title("Diabetes Readmission Prediction")
+st.title("Diabetes Readmission Prediction Using Machine Learning")
 st.write(
     "Compare five machine learning classifiers "
     "using the diabetes readmission test dataset."
